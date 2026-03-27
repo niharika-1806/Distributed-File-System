@@ -1,5 +1,7 @@
 package com.dfs.master;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,18 +17,20 @@ public class HealthMonitor implements Runnable {
         this.activeNodes = new ConcurrentHashMap<>();
     }
 
-    /**
-     * Called every time a Data Node pings the Master.
-     * Time Complexity: O(1)
-     */
     public void updateHeartbeat(String nodeId) {
         activeNodes.put(nodeId, System.currentTimeMillis());
     }
 
     /**
-     * This is the infinite loop that runs in the background 
-     * checking the process states of all registered nodes.
+     * Returns a list of all currently active Data Nodes.
+     * The File Splitter will use this to know where to send the file chunks.
      */
+    public List<String> getActiveNodes() {
+        // We return a brand new ArrayList containing the keys. 
+        // This is a "Defensive Copy" to ensure thread safety.
+        return new ArrayList<>(activeNodes.keySet());
+    }
+
     @Override
     public void run() {
         while (true) {
@@ -45,20 +49,15 @@ public class HealthMonitor implements Runnable {
                     }
                 }
             } catch (InterruptedException e) {
-                // If the system is shutting down, cleanly exit the loop
                 Thread.currentThread().interrupt();
                 System.out.println("Health Monitor shutting down...");
                 break;
             }
         }
     }
-    
-    /**
-     * Cleans up the system when a process dies.
-     */
+
     private void handleNodeFailure(String deadNodeId) {
         activeNodes.remove(deadNodeId);
-        // Future logic: Find which chunks were on this node 
-        // and command other nodes to create new copies.
+        // Future logic: Command surviving nodes to duplicate chunks that were on this node
     }
 }

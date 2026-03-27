@@ -1,32 +1,24 @@
 package com.dfs.shared.models;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class FileMetadata {
-    private final String fileName;
-    private final long fileSizeBytes;
-    // The ordered list of chunks that make up this entire file
+    private final String filename;
+    private final long fileSize;
     private final List<ChunkInfo> chunks;
 
-    public FileMetadata(String fileName, long fileSizeBytes, List<ChunkInfo> chunks) {
-        this.fileName = fileName;
-        this.fileSizeBytes = fileSizeBytes;
-        
-        // Defensive copying to ensure strict immutability
-        this.chunks = Collections.unmodifiableList(new ArrayList<>(chunks));
+    public FileMetadata(String filename, long fileSize) {
+        this.filename = filename;
+        this.fileSize = fileSize;
+        this.chunks = new ArrayList<>();
     }
 
-    public String getFileName() {
-        return fileName;
+    public void addChunk(ChunkInfo chunk) {
+        this.chunks.add(chunk);
     }
 
-    public long getFileSizeBytes() {
-        return fileSizeBytes;
-    }
-
-    public List<ChunkInfo> getChunks() {
-        return chunks;
-    }
+    public String getFilename() { return filename; }
+    public long getFileSize() { return fileSize; }
+    public List<ChunkInfo> getChunks() { return chunks; }
 }

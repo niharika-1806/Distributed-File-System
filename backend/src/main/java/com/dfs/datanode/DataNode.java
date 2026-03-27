@@ -1,100 +1,107 @@
 package com.dfs.datanode;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.UUID;
 
 public class DataNode {
     
-    // The unique identifier for this specific worker process
+    private final int myPort; // This node's unique listening port
     private final String nodeId;
-    private final String masterHost = "127.0.0.1"; // Localhost
-    private final int masterPort = 8080;
+    private final String masterHost = "127.0.0.1";
+    private final int masterPort = 9000;
     
-    // We keep the socket open for continuous communication
-    private Socket socket;
+    private final ChunkStorage storage; 
+    private Socket heartbeatSocket;
     private PrintWriter out;
 
-    public DataNode(String portOrId) {
-        // In a real system, nodes are often identified by their IP/Port. 
-        // Here, we assign a unique name based on what we pass via the command line.
-        this.nodeId = "node_" + portOrId + "_" + UUID.randomUUID().toString().substring(0, 5);
+    public DataNode(String portStr) {
+        this.myPort = Integer.parseInt(portStr);
+        this.nodeId = "node_" + myPort;
+        this.storage = new ChunkStorage(this.nodeId); 
     }
 
     public void start() {
-        System.out.println("Starting Data Node: " + nodeId);
+        System.out.println("Starting Data Node: " + nodeId + " on port " + myPort);
         
         try {
-            // 1. Establish a TCP connection to the Master Node
-            socket = new Socket(masterHost, masterPort);
-            out = new PrintWriter(socket.getOutputStream(), true);
-            System.out.println("Successfully connected to Master Node at " + masterHost + ":" + masterPort);
-
-            // 2. Start the Heartbeat mechanism in a background thread
+            // 1. Connect to Master to send heartbeats
+            heartbeatSocket = new Socket(masterHost, masterPort);
+            out = new PrintWriter(heartbeatSocket.getOutputStream(), true);
+            
+            // 2. Start the Heartbeat background thread
             startHeartbeat();
 
-            // 3. Keep the main process alive (Future: listen for incoming chunk data here)
-            // For now, we just loop infinitely to keep the process running
-            while (!socket.isClosed()) {
+            // 3. THE CATCHER: Start listening for incoming file chunks
+            startChunkListener();
+
+            // Keep the main process alive
+            while (!heartbeatSocket.isClosed()) {
                 Thread.sleep(1000); 
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (Exception e) {
             System.err.println("Data Node disconnected: " + e.getMessage());
-        } finally {
-            shutdown();
         }
     }
 
     /**
-     * Spins up a background thread that pings the Master Node every 5 seconds.
+     * Opens a ServerSocket to catch incoming chunks from the Master Node.
      */
+    private void startChunkListener() {
+        Thread listenerThread = new Thread(() -> {
+            try (ServerSocket serverSocket = new ServerSocket(myPort)) {
+                System.out.println("Data Node is now listening for chunks on port " + myPort);
+                
+                while (true) {
+                    try (Socket masterConnection = serverSocket.accept();
+                         DataInputStream in = new DataInputStream(masterConnection.getInputStream())) {
+                        
+                        // Read the chunk ID, size, and the raw bytes
+                        String chunkId = in.readUTF();
+                        int length = in.readInt();
+                        byte[] data = new byte[length];
+                        in.readFully(data);
+                        
+                        // Save it to the hard drive!
+                        storage.saveChunk(chunkId, data);
+                        
+                    } catch (IOException e) {
+                        System.err.println("Error receiving chunk: " + e.getMessage());
+                    }
+                }
+            } catch (IOException e) {
+                System.err.println("Critical failure starting chunk listener: " + e.getMessage());
+            }
+        });
+        listenerThread.setDaemon(true);
+        listenerThread.start();
+    }
+
     private void startHeartbeat() {
         Thread heartbeatThread = new Thread(() -> {
-            while (!socket.isClosed()) {
+            while (!heartbeatSocket.isClosed()) {
                 try {
-                    // Send the custom protocol message we defined in the Master Node
-                    out.println("HEARTBEAT " + nodeId);
-                    System.out.println("Sent heartbeat to Master...");
-                    
-                    // Wait 5 seconds before pinging again
+                    // Tell the master our exact listening port
+                    out.println("HEARTBEAT " + myPort);
                     Thread.sleep(5000); 
                 } catch (InterruptedException e) {
-                    System.err.println("Heartbeat interrupted.");
                     break;
                 }
             }
         });
-        
         heartbeatThread.setDaemon(true);
         heartbeatThread.start();
     }
 
-    /**
-     * Clean up OS resources before the process terminates.
-     */
-    private void shutdown() {
-        System.out.println("Initiating clean shutdown for " + nodeId);
-        try {
-            if (out != null) out.close();
-            if (socket != null && !socket.isClosed()) socket.close();
-        } catch (IOException e) {
-            System.err.println("Error closing sockets during shutdown.");
-        }
-    }
-
     public static void main(String[] args) {
-        // We require exactly one argument from the command line: the node's port/identifier
         if (args.length < 1) {
-            System.err.println("Usage: java DataNode <node_identifier>");
+            System.err.println("Usage: java DataNode <port_number>");
             System.exit(1);
         }
-
         DataNode node = new DataNode(args[0]);
-        // Add a shutdown hook to catch CTRL+C or SIGTERM from the OS
-        Runtime.getRuntime().addShutdownHook(new Thread(node::shutdown));
-        
         node.start();
     }
 }

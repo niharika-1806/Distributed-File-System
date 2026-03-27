@@ -1,42 +1,24 @@
 package com.dfs.shared.models;
 
-import java.util.UUID;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ChunkInfo {
     private final String chunkId;
-    private final int sequenceNumber;
-    private final List<String> replicatedNodeIds;
+    private final int sequenceNumber; // Which piece of the file is this? (0, 1, 2...)
+    private final List<String> nodeLocations; // Where is it saved? e.g., ["localhost:9001"]
 
-    public ChunkInfo(int sequenceNumber) {
-        // Automatically generate a massive, mathematically unique ID
-        this.chunkId = UUID.randomUUID().toString();
+    public ChunkInfo(String chunkId, int sequenceNumber) {
+        this.chunkId = chunkId;
         this.sequenceNumber = sequenceNumber;
-        
-        // A thread-safe list to hold the IDs of the nodes storing this chunk
-        this.replicatedNodeIds = new CopyOnWriteArrayList<>();
+        this.nodeLocations = new ArrayList<>();
     }
 
-    public String getChunkId() {
-        return chunkId;
+    public void addNodeLocation(String nodeAddress) {
+        this.nodeLocations.add(nodeAddress);
     }
 
-    public int getSequenceNumber() {
-        return sequenceNumber;
-    }
-
-    public List<String> getReplicatedNodeIds() {
-        return replicatedNodeIds;
-    }
-
-    public void addNodeLocation(String nodeId) {
-        if (!replicatedNodeIds.contains(nodeId)) {
-            replicatedNodeIds.add(nodeId);
-        }
-    }
-
-    public void removeNodeLocation(String nodeId) {
-        replicatedNodeIds.remove(nodeId);
-    }
+    public String getChunkId() { return chunkId; }
+    public int getSequenceNumber() { return sequenceNumber; }
+    public List<String> getNodeLocations() { return nodeLocations; }
 }

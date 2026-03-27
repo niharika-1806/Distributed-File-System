@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Run MasterNode",
+            "request": "launch",
+            "mainClass": "com.dfs.master.MasterNode",
+            "projectName": "distributed-file-system"
+        },
+        {
+            "type": "java",
+            "name": "Run DataNode (9001)",
+            "request": "launch",
+            "mainClass": "com.dfs.datanode.DataNode",
+            "projectName": "distributed-file-system",
+            "args": [
+                "9001"
+            ]
+        }
+    ]
+}

@@ -31,6 +31,10 @@ public class MasterNode {
         monitorThread.start();
         System.out.println("Health Monitor active. Watching for dead process states.");
 
+        // Start the Front Door (HTTP API)
+        MasterApiServer apiServer = new MasterApiServer(healthMonitor, namespaceMap);
+        apiServer.start();
+        
         // 2. Open the network port and listen for connections
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Master Node network listener active on port " + PORT);
@@ -41,9 +45,8 @@ public class MasterNode {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("New network connection received!");
 
-                // Hand the connection off to a worker thread so the main loop 
-                // can immediately go back to listening for more connections.
-                networkThreadPool.submit(new ClientHandler(clientSocket, namespaceMap, healthMonitor));
+                // THE FIX IS HERE: Removed namespaceMap from the constructor
+                networkThreadPool.submit(new ClientHandler(clientSocket, healthMonitor));
             }
             
         } catch (IOException e) {
