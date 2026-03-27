@@ -12,7 +12,7 @@ public class MasterNode {
     private final HealthMonitor healthMonitor;
     // The pool of worker threads
     private final ExecutorService networkThreadPool;
-    private final int PORT = 8080;
+    private final int PORT = 9000;
 
     public MasterNode() {
         this.namespaceMap = new NamespaceMap();
@@ -43,8 +43,7 @@ public class MasterNode {
 
                 // Hand the connection off to a worker thread so the main loop 
                 // can immediately go back to listening for more connections.
-                // (We will write the ClientHandler class later)
-                // networkThreadPool.submit(new ClientHandler(clientSocket, namespaceMap, healthMonitor));
+                networkThreadPool.submit(new ClientHandler(clientSocket, namespaceMap, healthMonitor));
             }
             
         } catch (IOException e) {
