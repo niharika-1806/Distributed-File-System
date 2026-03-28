@@ -39,6 +39,8 @@ public class MasterApiServer {
             server.createContext("/upload", new UploadHandler());
 
             server.createContext("/download", new DownloadHandler());
+            server.createContext("/status", new StatusHandler());
+            server.createContext("/kill", new KillHandler());
             
             // Use a thread pool to handle multiple web requests at once
             server.setExecutor(Executors.newFixedThreadPool(10)); 
@@ -74,7 +76,6 @@ public class MasterApiServer {
                 String filename= (query!=null && query.contains("filename="))
                         ? query.split("filename=")[1].split("&")[0]
                         : "uploaded_file.bin";  // Fallback name just in case
-
 
                 try (InputStream is = exchange.getRequestBody()) {
                     // Read the entire incoming file into memory (the buffer)
