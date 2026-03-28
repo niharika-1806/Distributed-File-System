@@ -319,4 +319,35 @@ public class MasterApiServer {
             }
         }
     }
+
+
+    /**
+     * Sends a direct TCP kill signal to a specific Data Node.
+     */
+    class KillHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+            
+            String query = exchange.getRequestURI().getQuery();
+            String port = query != null && query.contains("port=") ? query.split("port=")[1] : null;
+            
+            if (port != null) {
+                System.out.println("Executing assassination order on Data Node: " + port);
+                try (java.net.Socket socket = new java.net.Socket("127.0.0.1", Integer.parseInt(port));
+                     java.io.DataOutputStream out = new java.io.DataOutputStream(socket.getOutputStream())) {
+                    out.writeUTF("KILL");
+                    out.flush();
+                } catch (Exception e) {
+                    System.out.println("Node " + port + " is already dead or unreachable.");
+                }
+            }
+            
+            String response = "Kill signal transmitted.";
+            exchange.sendResponseHeaders(200, response.length());
+            try (java.io.OutputStream os = exchange.getResponseBody()) {
+                os.write(response.getBytes());
+            }
+        }
+    }
 }
